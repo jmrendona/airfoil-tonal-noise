@@ -7,6 +7,7 @@ chanels = [13,14,15,16,25,26]
 pr_i = 1
 pr_n = 47
 aoa = 2
+ylim = [-20, 40]
 
-psd_generation(pr_i, pr_n, aoa, chanels, path, filename)
-time_trace_generation(pr_i, pr_n, aoa, chanels, path, filename)
+psd_generation(pr_i, pr_n, aoa, ylim, chanels, path, filename)
+# time_trace_generation(pr_i, pr_n, aoa, chanels, path, filename)

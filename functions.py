@@ -66,7 +66,7 @@ def time_trace_generation(pr_i:int,pr_n:int,aoa:int,chanels:list,path:str,filena
             k += 1
             
 
-def psd_generation(pr_i:int,pr_n:int,aoa:int,chanels:list,path:str,filename:str):
+def psd_generation(pr_i:int,pr_n:int,aoa:int,y_lim:list,chanels:list,path:str,filename:str):
     
     plt.rcParams['agg.path.chunksize'] = 10000
     
@@ -106,6 +106,7 @@ def psd_generation(pr_i:int,pr_n:int,aoa:int,chanels:list,path:str,filename:str)
             plt.xlabel('Frequency $\\left[Hz\\right]$',fontsize=12, style='italic')
             plt.ylabel('PSD $\\left[\\frac{dB}{Hz}\\right]$',fontsize=12, style='italic')
             plt.xlim([70,20000])
+            plt.ylim(y_lim)
             ax=plt.gca()
             ax.set_xscale('log')
             plt.xticks(fontsize=12)
