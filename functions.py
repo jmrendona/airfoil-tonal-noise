@@ -5,6 +5,7 @@ from scipy.io import savemat
 from scipy import stats
 import h5py
 import scipy.signal as sg
+import pdb
 from rich import print as rprint
 
 def next_greater_power_of_2(x):
@@ -118,3 +119,65 @@ def psd_generation(pr_i:int,pr_n:int,aoa:int,y_lim:list,chanels:list,path:str,fi
             plt.close()
             
             k += 1
+            
+def ladder_psd_generation(pr_i:int,pr_n:int,aoa:int,chanels:list,path:str,filename:str):
+    
+    '''
+    This function is used to generate the PSD for the ladder plot.
+    It is not used in the main script, but it can be useful for future analysis.
+    '''
+
+    plt.rcParams['agg.path.chunksize'] = 10000
+    
+    os.makedirs(os.path.join(path, f'images/ladder_psd/{aoa}deg'), exist_ok=True)
+    
+    filename = filename.split('-')[0]
+    
+    k=2
+    for j in chanels:
+        pr_used = np.arange(pr_i,pr_n+1,1)
+        calculated_psd = []
+        for i in pr_used:
+            
+            data = h5py.File(os.path.join(path,filename + f'-{i}.h5'),'r')
+            time_data = data['Table1']['Ds1-Time'][:]
+            pressure_data = data['Table1'][f'Ds{k}-Signal {j}'][:]
+        
+            dt=time_data[1]-time_data[0]
+            fs=1.0/dt
+            
+            fmin = 10
+            n_chunk = 20
+            lensg_exp = pressure_data.size
+            nperseg_exp = lensg_exp/n_chunk
+            nfft_exp = next_greater_power_of_2(int(nperseg_exp))
+            noverlap_exp = nperseg_exp/2
+
+            if nperseg_exp > lensg_exp:
+                raise RuntimeError('Wrong value for $f_{min}$')
+
+            [f,Pxx]=sg.welch(pressure_data,fs=fs,window='hann',nperseg=nperseg_exp,nfft=nfft_exp,scaling='density')
+            
+            calculated_psd.append(10*np.log10(Pxx/4.0e-10))
+        
+        k += 1   
+        Z = np.array(calculated_psd)
+        f = np.array(f)
+        pr_used, f = np.meshgrid(pr_used, f)
+
+        plt.figure()
+        plt.pcolormesh(pr_used, f, Z.T, shading='gouraud',cmap='grey_r', vmin=-20, vmax=45)
+        plt.colorbar(label='PSD $\\left[\\frac{dB}{Hz}\\right]$')
+        plt.grid(True, which='both', ls='--')
+        plt.xlabel('Measurement N°$[]$',fontsize=12, style='italic')
+        plt.ylabel('Frequency $\\left[Hz\\right]$',fontsize=12, style='italic')
+        plt.ylim([70,2000])
+        plt.xticks(fontsize=12)
+        plt.yticks(fontsize=12)
+        plt.tight_layout()
+        print(f'Saving ladder PSD for percetage {i} and signal {j} \n')
+        print(40*'-')
+        plt.savefig(os.path.join(path, f'images/ladder_psd/{aoa}deg', filename + f'-{i}-s{j}-ladder-PSD.png'), dpi=600)
+        plt.close()
+            
+        
