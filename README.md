@@ -1,4 +1,4 @@
-# BK-rapid-postproc
+# airfoil-tonal-noise
 Is a collection of functions that allow a rapid post-processing from data obtained by means of the Brüel & Kjær Acoustic adquisition system.
 
 The functions need the have the format given by default by the B&K system. That means that the time should be labeled as 'Ds1-Time', and the pressure from the microphones needes to be such as 'DsX-Signal Y', with X and Y defined values that need to be know in advance by the user of the code. Additionally, for a proper functioning if multiple files want to be analyzed, it is recommended that they have a similar name and only diverge in the script given at the end by the B&K system.  
