@@ -180,4 +180,62 @@ def ladder_psd_generation(pr_i:int,pr_n:int,aoa:int,chanels:list,path:str,filena
         plt.savefig(os.path.join(path, f'images/ladder_psd/{aoa}deg', filename + f'-{i}-s{j}-ladder-PSD.png'), dpi=600)
         plt.close()
             
+def cp_generation(pr_i:int,pr_n:int,aoa:int,slope:float,intercept:float,offset:int,chord_coord:list,path:str,*filenames_chanels:list):
+    
+    '''
+    This function is used to generate the Cp for the ladder plot.
+    It is not used in the main script, but it can be useful for future analysis.
+    '''
+
+    plt.rcParams['agg.path.chunksize'] = 10000
+    pref = 101325.0
+    Tref = 20.0
+    rho_2 = pref/(287.01*(273.15+Tref))
+    
+    filenames_chanels = filenames_chanels[0]
+    sv_used = int(len(filenames_chanels)/2)
+    filenames = filenames_chanels[0:sv_used]
+    chanels = filenames_chanels[sv_used:]
+    
+    os.makedirs(os.path.join(path, f'images/cp/{aoa}deg'), exist_ok=True)
+
+    pr_used = np.arange(pr_i,pr_n+1,1)
+
+    cp_data = {}
+    for j in pr_used: 
+        cp_data.clear()
+        velocity = slope*j+offset + intercept
+        pdyn_2 = (rho_2*velocity**2)/2
+        for i in range(sv_used):
+            filenames[i] = filenames[i].split('-')[0]
         
+            cp_array = np.loadtxt(os.path.join(path, filenames[i] + f'-{j}.csv'), delimiter=',')[:,1:17].mean(axis=0)
+            cp_array = cp_array[0:chanels[i]]/pdyn_2
+            
+            cp_data[(i, j)] = cp_array
+    
+
+        cps = [cp_data[(i, j)] for i in range(sv_used)]
+        cps_concatenated = np.concatenate(cps)
+
+        plt.figure(1)
+        # plt.plot(Cp_exp[:,0],Cp_exp[:,1],"o",color='red',label='Reference')
+        plt.plot(chord_coord,cps_concatenated,"o--",color='black',label=str(np.round(velocity,decimals=2))+' m/s')
+        # plt.plot(xC_scan,-Cp_scan_ref,linestyle='None',marker='o',label='Exp UTIAS $15^\\circ$ - 16 m/s')
+        #plt.plot(xC_scan_2,-Cp_scan,linestyle='None',marker='o',color='k',label=f'Exp ISAE ${AoA}^\\circ$ - {velocity_name} m/s')
+        plt.legend()
+        plt.grid(True, which='both', ls='--')
+        plt.xlabel('$x/C$',fontsize=16)
+        plt.ylabel('$-C_p$',fontsize=16)
+        plt.ylim([-1,1.7])
+        plt.xticks(fontsize=12)
+        plt.yticks(fontsize=12)
+        print(f'Saving Cp for percetage {j}\n')
+        print(40*'-')
+        plt.savefig(os.path.join(path,f'images/cp/{aoa}deg',f'cp-NACA0015-{aoa}deg-{j}pr') + '.png' , dpi=600)
+        # plt.show()
+        plt.close(1)
+
+    # scan_1 = np.loadtxt(os.path.join(path,filename_1),delimiter=',')[:,1:17].mean(axis=0)
+    
+    
