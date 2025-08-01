@@ -11,7 +11,7 @@ from rich import print as rprint
 def next_greater_power_of_2(x):
     return round(2**(x-1).bit_length())
 
-def time_trace_generation(pr_i:int,pr_n:int,aoa:int,chanels:list,path:str,filename:str):
+def time_trace_generation(pr_i:int,pr_n:int,aoa:int,jump:int,chanels:list,path:str,filename:str):
     
     '''
     This function could be used to quickly evaluate the signals obtained from the B&K system\n
@@ -38,7 +38,7 @@ def time_trace_generation(pr_i:int,pr_n:int,aoa:int,chanels:list,path:str,filena
         os.makedirs(os.path.join(path, f'images/timetrace/{aoa}deg/signal_{k}'), exist_ok=True)
     
     filename = filename.split('-')[0]
-    pr_used = np.arange(pr_i,pr_n+1,1)
+    pr_used = np.arange(pr_i,pr_n+1,jump)
     
     for i in pr_used:
         
@@ -67,7 +67,7 @@ def time_trace_generation(pr_i:int,pr_n:int,aoa:int,chanels:list,path:str,filena
             k += 1
             
 
-def psd_generation(pr_i:int,pr_n:int,aoa:int,y_lim:list,chanels:list,path:str,filename:str):
+def psd_generation(pr_i:int,pr_n:int,aoa:int,jump:int,y_lim:list,chanels:list,path:str,filename:str):
     
     plt.rcParams['agg.path.chunksize'] = 10000
     
@@ -75,7 +75,7 @@ def psd_generation(pr_i:int,pr_n:int,aoa:int,y_lim:list,chanels:list,path:str,fi
         os.makedirs(os.path.join(path, f'images/psd/{aoa}deg/signal_{k}'), exist_ok=True)
     
     filename = filename.split('-')[0]
-    pr_used = np.arange(pr_i,pr_n+1,1)
+    pr_used = np.arange(pr_i,pr_n+1,jump)
     
     for i in pr_used:
     
@@ -120,7 +120,7 @@ def psd_generation(pr_i:int,pr_n:int,aoa:int,y_lim:list,chanels:list,path:str,fi
             
             k += 1
             
-def ladder_psd_generation(pr_i:int,pr_n:int,aoa:int,chanels:list,path:str,filename:str):
+def ladder_psd_generation(pr_i:int,pr_n:int,aoa:int,jump:int,chanels:list,path:str,filename:str):
     
     '''
     This function is used to generate the PSD for the ladder plot.
@@ -135,7 +135,7 @@ def ladder_psd_generation(pr_i:int,pr_n:int,aoa:int,chanels:list,path:str,filena
     
     k=2
     for j in chanels:
-        pr_used = np.arange(pr_i,pr_n+1,1)
+        pr_used = np.arange(pr_i,pr_n+1,jump)
         calculated_psd = []
         for i in pr_used:
             
@@ -180,7 +180,7 @@ def ladder_psd_generation(pr_i:int,pr_n:int,aoa:int,chanels:list,path:str,filena
         plt.savefig(os.path.join(path, f'images/ladder_psd/{aoa}deg', filename + f'-{i}-s{j}-ladder-PSD.png'), dpi=600)
         plt.close()
             
-def cp_generation(pr_i:int,pr_n:int,aoa:int,slope:float,intercept:float,offset:int,chord_coord:list,path:str,*filenames_chanels:list):
+def cp_generation(pr_i:int,pr_n:int,aoa:int,slope:float,intercept:float,offset:int,jump:int,chord_coord:list,path:str,*filenames_chanels:list):
     
     '''
     This function is used to generate the Cp for the ladder plot.
@@ -199,7 +199,7 @@ def cp_generation(pr_i:int,pr_n:int,aoa:int,slope:float,intercept:float,offset:i
     
     os.makedirs(os.path.join(path, f'images/cp/{aoa}deg'), exist_ok=True)
 
-    pr_used = np.arange(pr_i,pr_n+1,1)
+    pr_used = np.arange(pr_i,pr_n+1,jump)
 
     cp_data = {}
     for j in pr_used: 
@@ -208,7 +208,6 @@ def cp_generation(pr_i:int,pr_n:int,aoa:int,slope:float,intercept:float,offset:i
         pdyn_2 = (rho_2*velocity**2)/2
         for i in range(sv_used):
             filenames[i] = filenames[i].split('-')[0]
-        
             cp_array = np.loadtxt(os.path.join(path, filenames[i] + f'-{j}.csv'), delimiter=',')[:,1:17].mean(axis=0)
             cp_array = cp_array[0:chanels[i]]/pdyn_2
             
@@ -220,7 +219,7 @@ def cp_generation(pr_i:int,pr_n:int,aoa:int,slope:float,intercept:float,offset:i
 
         plt.figure(1)
         # plt.plot(Cp_exp[:,0],Cp_exp[:,1],"o",color='red',label='Reference')
-        plt.plot(chord_coord,cps_concatenated,"o--",color='black',label=str(np.round(velocity,decimals=2))+' m/s')
+        plt.plot(chord_coord,cps_concatenated,"o",color='black',label=str(np.round(velocity,decimals=2))+' m/s')
         # plt.plot(xC_scan,-Cp_scan_ref,linestyle='None',marker='o',label='Exp UTIAS $15^\\circ$ - 16 m/s')
         #plt.plot(xC_scan_2,-Cp_scan,linestyle='None',marker='o',color='k',label=f'Exp ISAE ${AoA}^\\circ$ - {velocity_name} m/s')
         plt.legend()
