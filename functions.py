@@ -6,7 +6,7 @@ from scipy import stats
 import h5py
 import scipy.signal as sg
 import pdb
-from rich import print as rprint
+# from rich import print as rprint
 
 def next_greater_power_of_2(x):
     return round(2**(x-1).bit_length())
@@ -67,12 +67,12 @@ def time_trace_generation(pr_i:int,pr_n:int,aoa:int,jump:int,chanels:list,path:s
             k += 1
             
 
-def psd_generation(pr_i:int,pr_n:int,aoa:int,jump:int,y_lim:list,chanels:list,path:str,filename:str):
+def psd_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,y_lim:list,chanels:list,path:str,filename:str):
     
     plt.rcParams['agg.path.chunksize'] = 10000
     
     for k in chanels: 
-        os.makedirs(os.path.join(path, f'images/psd/{aoa}deg/signal_{k}'), exist_ok=True)
+        os.makedirs(os.path.join(path, f'images/psd/{folder_name}'), exist_ok=True)
     
     filename = filename.split('-')[0]
     pr_used = np.arange(pr_i,pr_n+1,jump)
@@ -83,8 +83,8 @@ def psd_generation(pr_i:int,pr_n:int,aoa:int,jump:int,y_lim:list,chanels:list,pa
         for j in chanels:
             
             data = h5py.File(os.path.join(path,filename + f'-{i}.h5'),'r')
-            time_data = data['Table1']['Ds1-Time'][:]
-            pressure_data = data['Table1'][f'Ds{k}-Signal {j}'][:]
+            time_data = data['Table1']['Ds01-Time'][:]
+            pressure_data = data['Table1'][f'Ds{k:02d}-Signal {j}'][:]
         
             dt=time_data[1]-time_data[0]
             fs=1.0/dt
@@ -100,7 +100,7 @@ def psd_generation(pr_i:int,pr_n:int,aoa:int,jump:int,y_lim:list,chanels:list,pa
                 raise RuntimeError('Wrong value for $f_{min}$')
 
             [f,Pxx]=sg.welch(pressure_data,fs=fs,window='hann',nperseg=nperseg_exp,nfft=nfft_exp,scaling='density')
-            
+                
             # PSD plot
             plt.plot(f,10*np.log10(Pxx/4.0e-10),'k--')
             plt.grid(True, which='both', ls='--')
@@ -115,11 +115,72 @@ def psd_generation(pr_i:int,pr_n:int,aoa:int,jump:int,y_lim:list,chanels:list,pa
             plt.tight_layout()
             print(f'Saving PSD for percetage {i} and signal {j} \n')
             print(40*'-')
-            plt.savefig(os.path.join(path, f'images/psd/{aoa}deg/signal_{j}', filename + f'-{i}-s{j}-PSD.png'), dpi=600)
+            plt.savefig(os.path.join(path, f'images/psd/{folder_name}', filename + f'-{i}-s{j}-PSD.png'), dpi=600)
             plt.close()
             
             k += 1
+
+def directivity_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,ylim:list,chanels:list,polar_angles:list,path:str,filename:str,*targets:list):
+    
+    '''
+    This function is used to generate the directivity plot for the different cases.
+    It is not used in the main script, but it can be useful for future analysis.
+    '''
+
+    plt.rcParams['agg.path.chunksize'] = 10000
+    
+    for k in chanels: 
+        os.makedirs(os.path.join(path, f'images/directivity/{folder_name}'), exist_ok=True)
+        
+    oaspl_data = np.zeros(len(chanels))
+    filename = filename.split('-')[0]
+    pr_used = np.arange(pr_i,pr_n+1,jump)
+
+    for z in range(int(len(targets[0])/2)):
+        target_i = targets[0][z*2]
+        target_n = targets[0][z*2+1]
+        
+        for i in pr_used:
+        
+            k=2
+            for j in chanels:
+                
+                data = h5py.File(os.path.join(path,filename + f'-{i}.h5'),'r')
+                time_data = data['Table1']['Ds01-Time'][:]
+                pressure_data = data['Table1'][f'Ds{k:02d}-Signal {j}'][:]
             
+                dt=time_data[1]-time_data[0]
+                fs=1.0/dt
+                
+                fmin = 10
+                n_chunk = 20
+                lensg_exp = pressure_data.size
+                nperseg_exp = lensg_exp/n_chunk
+                nfft_exp = next_greater_power_of_2(int(nperseg_exp))
+                noverlap_exp = nperseg_exp/2
+
+                if nperseg_exp > lensg_exp:
+                    raise RuntimeError('Wrong value for $f_{min}$')
+
+                [f,Pxx]=sg.welch(pressure_data,fs=fs,window='hann',nperseg=nperseg_exp,nfft=nfft_exp,scaling='density')
+                f = f[np.where(f>=target_i)[0][0]:np.where(f<=target_n)[0][-1]+1]
+                Pxx = Pxx[np.where(f>=target_i)[0][0]:np.where(f<=target_n)[0][-1]+1]
+                oaspl_data[k-2] = 10*np.log10(np.trapz(Pxx,f)/4.0e-10)
+                
+                k += 1
+                
+            plt.polar(polar_angles*np.pi/180,oaspl_data,'o',color='black')
+            plt.grid(True, which='both', ls='--')
+            plt.ylim(ylim)
+            ax=plt.gca()
+            plt.tight_layout()
+            print(f'Saving directivity for percetage {i} and signal {j} \n')
+            print(40*'-')
+            plt.savefig(os.path.join(path, f'images/directivity/{folder_name}', filename + f'-{i}-directivity.png'), dpi=600)    
+            #plt.show()
+            plt.close()
+              
+                    
 def ladder_psd_generation(pr_i:int,pr_n:int,aoa:int,jump:int,chanels:list,path:str,filename:str):
     
     '''
@@ -129,7 +190,7 @@ def ladder_psd_generation(pr_i:int,pr_n:int,aoa:int,jump:int,chanels:list,path:s
 
     plt.rcParams['agg.path.chunksize'] = 10000
     
-    os.makedirs(os.path.join(path, f'images/ladder_psd/{aoa}deg'), exist_ok=True)
+    os.makedirs(os.path.join('/Users/jmrendona/Library/CloudStorage/OneDrive-USherbrooke/PhD/Others/Mine/2025-ISAE-Exp/NACA0015', f'images/ladder_psd/{aoa}deg'), exist_ok=True)
     
     filename = filename.split('-')[0]
     
@@ -177,7 +238,7 @@ def ladder_psd_generation(pr_i:int,pr_n:int,aoa:int,jump:int,chanels:list,path:s
         plt.tight_layout()
         print(f'Saving ladder PSD for percetage {i} and signal {j} \n')
         print(40*'-')
-        plt.savefig(os.path.join(path, f'images/ladder_psd/{aoa}deg', filename + f'-{i}-s{j}-ladder-PSD.png'), dpi=600)
+        plt.savefig(os.path.join('/Users/jmrendona/Library/CloudStorage/OneDrive-USherbrooke/PhD/Others/Mine/2025-ISAE-Exp/NACA0015', f'images/ladder_psd/{aoa}deg', filename + f'-{i}-s{j}-ladder-PSD.png'), dpi=600)
         plt.close()
             
 def cp_generation(pr_i:int,pr_n:int,aoa:int,slope:float,intercept:float,offset:int,jump:int,chord_coord:list,path:str,*filenames_chanels:list):
@@ -197,7 +258,7 @@ def cp_generation(pr_i:int,pr_n:int,aoa:int,slope:float,intercept:float,offset:i
     filenames = filenames_chanels[0:sv_used]
     chanels = filenames_chanels[sv_used:]
     
-    os.makedirs(os.path.join(path, f'images/cp/{aoa}deg'), exist_ok=True)
+    os.makedirs(os.path.join('/Users/jmrendona/Library/CloudStorage/OneDrive-USherbrooke/PhD/Others/Mine/2025-ISAE-Exp/NACA0015', f'images/cp/{aoa}deg'), exist_ok=True)
 
     pr_used = np.arange(pr_i,pr_n+1,jump)
 
@@ -226,12 +287,12 @@ def cp_generation(pr_i:int,pr_n:int,aoa:int,slope:float,intercept:float,offset:i
         plt.grid(True, which='both', ls='--')
         plt.xlabel('$x/C$',fontsize=16)
         plt.ylabel('$-C_p$',fontsize=16)
-        plt.ylim([-1,1.7])
+        plt.ylim([-2,2])
         plt.xticks(fontsize=12)
         plt.yticks(fontsize=12)
         print(f'Saving Cp for percetage {j}\n')
         print(40*'-')
-        plt.savefig(os.path.join(path,f'images/cp/{aoa}deg',f'cp-NACA0015-{aoa}deg-{j}pr') + '.png' , dpi=600)
+        plt.savefig(os.path.join('/Users/jmrendona/Library/CloudStorage/OneDrive-USherbrooke/PhD/Others/Mine/2025-ISAE-Exp/NACA0015',f'images/cp/{aoa}deg',f'cp-NACA0015-{aoa}deg-{j}pr') + '.png' , dpi=600)
         # plt.show()
         plt.close(1)
 
