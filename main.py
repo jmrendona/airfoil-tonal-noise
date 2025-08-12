@@ -1,6 +1,6 @@
 from functions import *
 
-path = '/Volumes/BckSmoreau6/Jovan-McGill/2025-rotors'
+path = '/Volumes/BckSmoreau6/Jovan-McGill/2025-rotors-cross/psd'
 path_cp = '/Users/jmrendona/Library/CloudStorage/OneDrive-USherbrooke/PhD/Others/Mine/2025-ISAE-Exp/NACA0015/Cp/Exp-NACA0015-2'
 filename = 'hover_AD30_200-1.h5'
 # filename_cp = ['NACA0015_6deg_SVA_sweep2-1.csv','NACA0015_6deg_SVB_sweep2-1.csv',15,14]
@@ -14,10 +14,10 @@ naca12_coord = np.array([0.009230769,	0.025384615,	0.043076923,	0.061538462,	0.0
 polar_angles = np.arange(0, 184, 3)  # Polar angles from 0 to 180 degrees in steps of 5])
 chanels = np.arange(37, 99)
 pr_i = 1
-pr_n = 5
+pr_n = 9
 folder_name = 'AD30_200'
 ylim = [-10, 70]
-ylim_2 = [35, 70]
+ylim_2 = [20, 70]
 
 # psd_generation(pr_i, pr_n, 'AD30_200', 1, ylim, chanels, path, 'hover_AD30_200-1.h5')
 # psd_generation(pr_i, 3, 'AD30_250', 1, ylim, chanels, path, 'hover_AD30_250-1.h5')
@@ -27,8 +27,8 @@ ylim_2 = [35, 70]
 # psd_generation(pr_i, 3, 'ADS17', 1, ylim, chanels, path, 'hover_ADS17-1.h5')
 # psd_generation(pr_i, 3, 'ADS18', 1, ylim, chanels, path, 'hover_ADS18-1.h5')
 # psd_generation(pr_i, 3, 'PT03', 1, ylim, chanels, path, 'hover_PT03-1.h5')
-# psd_generation(pr_i, 5, 'PT05', 1, ylim, chanels, path, 'hover_PT05-1.h5')
-psd_generation(pr_i, 6, 'PT08', 1, ylim, chanels, path, 'hover_PT08-1.h5')
+# psd_generation(pr_i, 9, 'AD30_200_cross', 1, 8, ylim, chanels, path, 'Cross_AD30_200-1.h5')
+# psd_generation(pr_i, 6, 'PT08', 1, ylim, chanels, path, 'hover_PT08-1.h5')
 
 # directivity_generation(pr_i, pr_n, 'AD30_200', 1, ylim, chanels, polar_angles, path, 'hover_AD30_200-1.h5', [100,10000])
 # directivity_generation(pr_i, 3, 'AD30_250', 1, ylim, chanels, polar_angles, path, 'hover_AD30_250-1.h5', [100,10000])
@@ -39,7 +39,7 @@ psd_generation(pr_i, 6, 'PT08', 1, ylim, chanels, path, 'hover_PT08-1.h5')
 # directivity_generation(pr_i, 3, 'ADS18', 1, ylim, chanels, polar_angles, path, 'hover_ADS18-1.h5', [100,10000])
 # directivity_generation(pr_i, 3, 'PT03', 1, ylim, chanels, polar_angles, path, 'hover_PT03-1.h5', [100,10000])
 # directivity_generation(pr_i, 5, 'PT05', 1, ylim_2, chanels, polar_angles, path, 'hover_PT05-1.h5', [100,10000])
-directivity_generation(pr_i, 6, 'PT08', 1, ylim_2, chanels, polar_angles, path, 'hover_PT08-1.h5', [100,10000])
+directivity_generation(pr_i, 9, 'AD30_200_cross', 1, 8, ylim_2, chanels, polar_angles, path, 'Cross_AD30_200-1.h5', 'integrated', [100,10000])
 # cp_generation(pr_i, pr_n, aoa, 0.37, 0.16, 0, 1, naca12_coord, path, filename_cp)
 # ladder_psd_generation(pr_i, pr_n, aoa, 2, chanels, path, 'NACA0012_0deg-1.h5')
 # ladder_psd_generation(pr_i, pr_n, 1, 2, chanels, path, 'NACA0015_1deg_sweep-1.h5')

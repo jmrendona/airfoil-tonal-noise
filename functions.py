@@ -67,7 +67,7 @@ def time_trace_generation(pr_i:int,pr_n:int,aoa:int,jump:int,chanels:list,path:s
             k += 1
             
 
-def psd_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,y_lim:list,chanels:list,path:str,filename:str):
+def psd_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,offset:int,y_lim:list,chanels:list,path:str,filename:str):
     
     plt.rcParams['agg.path.chunksize'] = 10000
     
@@ -79,7 +79,7 @@ def psd_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,y_lim:list,chanels
     
     for i in pr_used:
     
-        k=2
+        k=offset
         for j in chanels:
             
             data = h5py.File(os.path.join(path,filename + f'-{i}.h5'),'r')
@@ -120,7 +120,7 @@ def psd_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,y_lim:list,chanels
             
             k += 1
 
-def directivity_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,ylim:list,chanels:list,polar_angles:list,path:str,filename:str,*targets:list):
+def directivity_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,offset:int,ylim:list,chanels:list,polar_angles:list,path:str,filename:str,case:str,*targets:list):
     
     '''
     This function is used to generate the directivity plot for the different cases.
@@ -142,7 +142,7 @@ def directivity_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,ylim:list,
         
         for i in pr_used:
         
-            k=2
+            k=offset
             for j in chanels:
                 
                 data = h5py.File(os.path.join(path,filename + f'-{i}.h5'),'r')
@@ -163,12 +163,14 @@ def directivity_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,ylim:list,
                     raise RuntimeError('Wrong value for $f_{min}$')
 
                 [f,Pxx]=sg.welch(pressure_data,fs=fs,window='hann',nperseg=nperseg_exp,nfft=nfft_exp,scaling='density')
-                f = f[np.where(f>=target_i)[0][0]:np.where(f<=target_n)[0][-1]+1]
-                Pxx = Pxx[np.where(f>=target_i)[0][0]:np.where(f<=target_n)[0][-1]+1]
-                oaspl_data[k-2] = 10*np.log10(np.trapz(Pxx,f)/4.0e-10)
-                
+                f = f[target_i:target_n]
+                Pxx = Pxx[target_i:target_n]
+                if case == 'integrated':
+                    oaspl_data[k-offset] = 10*np.log10(np.trapz(Pxx,f)/4.0e-10)
+                elif case == 'max':
+                    oaspl_data[k-offset] = np.max(10*np.log10(Pxx/4.0e-10))
+                    
                 k += 1
-                
             plt.polar(polar_angles*np.pi/180,oaspl_data,'o',color='black')
             plt.grid(True, which='both', ls='--')
             plt.ylim(ylim)
@@ -176,7 +178,7 @@ def directivity_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,ylim:list,
             plt.tight_layout()
             print(f'Saving directivity for percetage {i} and signal {j} \n')
             print(40*'-')
-            plt.savefig(os.path.join(path, f'images/directivity/{folder_name}', filename + f'-{i}-directivity.png'), dpi=600)    
+            plt.savefig(os.path.join(path, f'images/directivity/{folder_name}', filename + f'-{i}-directivity-oaspl.png'), dpi=600)    
             #plt.show()
             plt.close()
               
