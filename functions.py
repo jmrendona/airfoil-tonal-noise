@@ -1,11 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
 import os
 from scipy.io import savemat
 from scipy import stats
 import h5py
 import scipy.signal as sg
 import pdb
+import pywt
 # from rich import print as rprint
 
 def next_greater_power_of_2(x):
@@ -42,12 +44,12 @@ def time_trace_generation(pr_i:int,pr_n:int,aoa:int,jump:int,chanels:list,path:s
     
     for i in pr_used:
         
-        k=2
+        k=124
         for j in chanels:
             
             data = h5py.File(os.path.join(path,filename + f'-{i}.h5'),'r')
-            time_data = data['Table1']['Ds1-Time'][:]
-            pressure_data = data['Table1'][f'Ds{k}-Signal {j}'][:]
+            time_data = data['Table1']['Ds001-Time'][:]
+            pressure_data = data['Table1'][f'Ds{k:03d}-Signal {j}'][:]
             
             # Time trace plot
             plt.figure()
@@ -83,8 +85,8 @@ def psd_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,offset:int,y_lim:l
         for j in chanels:
             
             data = h5py.File(os.path.join(path,filename + f'-{i}.h5'),'r')
-            time_data = data['Table1']['Ds01-Time'][:]
-            pressure_data = data['Table1'][f'Ds{k:02d}-Signal {j}'][:]
+            time_data = data['Table1']['Ds001-Time'][:]
+            pressure_data = data['Table1'][f'Ds{k:03d}-Signal {j}'][:]
         
             dt=time_data[1]-time_data[0]
             fs=1.0/dt
@@ -120,6 +122,108 @@ def psd_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,offset:int,y_lim:l
             
             k += 1
 
+def wavelet_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,offset:int,y_lim:list,chanels:list,path:str,filename:str):
+    
+    plt.rcParams['agg.path.chunksize'] = 10000
+    
+    for k in chanels: 
+        os.makedirs(os.path.join(path, f'images/wavelet/{folder_name}'), exist_ok=True)
+    
+    filename = filename.split('-')[0]
+    pr_used = np.arange(pr_i,pr_n+1,jump)
+    
+    for i in pr_used:
+    
+        k=offset
+        for j in chanels:
+            
+            data = h5py.File(os.path.join(path,filename + f'-{i}.h5'),'r')
+            time_data = data['Table1']['Ds001-Time'][:]
+            pressure_data = data['Table1'][f'Ds{k:03d}-Signal {j}'][:]
+        
+            dt=time_data[1]-time_data[0]
+            fs=1.0/dt
+
+            n_scales = 300
+            scales = np.arange(1, n_scales)
+            coeffs, freqs = pywt.cwt(pressure_data, scales, 'cmor', sampling_period=dt) 
+            
+            power = np.abs(coeffs)**2
+            power_norm = power / np.var(pressure_data)
+            extent = [time_data.min(), time_data.max(), freqs.min(), freqs.max()]
+
+            plt.imshow(10*np.log10(power_norm + 1e-20), extent=extent, cmap='hot_r', aspect='auto', origin='lower',vmin=-25,vmax=0.1)
+            plt.colorbar(label='Normalized $|W|^2$')
+            plt.xlabel('Time [s]',fontsize=14, style='italic')
+            plt.ylabel('Frequency [Hz]',fontsize=14, style='italic')
+            plt.ylim([100,1500])
+            plt.yscale('log')
+            plt.xticks(fontsize=14)
+            plt.yticks(fontsize=14)
+            plt.tight_layout()
+            print(f'Saving spectrogram for data with iterating {i}-{j}')
+            print(40*'-')
+            plt.savefig(os.path.join(path, f'images/wavelet/{folder_name}', filename + f'-{i}-s{j}-Wavelet.png'), dpi=600)
+            plt.close()
+
+            k += 1
+
+
+def spectrogram_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,offset:int,y_lim:list,chanels:list,path:str,filename:str):
+    
+    plt.rcParams['agg.path.chunksize'] = 10000
+    
+    for k in chanels: 
+        os.makedirs(os.path.join(path, f'images/spectrogram/{folder_name}'), exist_ok=True)
+    
+    filename = filename.split('-')[0]
+    pr_used = np.arange(pr_i,pr_n+1,jump)
+    
+    for i in pr_used:
+    
+        k=offset
+        for j in chanels:
+            
+            data = h5py.File(os.path.join(path,filename + f'-{i}.h5'),'r')
+            time_data = data['Table1']['Ds001-Time'][:]
+            pressure_data = data['Table1'][f'Ds{k:03d}-Signal {j}'][:]
+        
+            dt=time_data[1]-time_data[0]
+            fs=1.0/dt
+            
+            fmin = 10
+            n_chunk = 4
+            lensg_exp = pressure_data.size
+            nperseg_exp = lensg_exp/n_chunk
+            nfft_exp = next_greater_power_of_2(int(nperseg_exp))
+            noverlap_exp = nperseg_exp/2
+
+            if nperseg_exp > lensg_exp:
+                raise RuntimeError('Wrong value for $f_{min}$')
+
+            f, t, pxx = sg.spectrogram(pressure_data,fs=fs,window='hann',nperseg=int(nperseg_exp),nfft=nfft_exp,scaling='density')
+
+            cmap = plt.get_cmap('hot_r')
+            fig = plt.pcolormesh(t, f, 10*np.log10(pxx/4.0e-10), shading='gouraud',cmap=cmap,vmin=-10,vmax=30)
+            plt.ylim([100,15000])
+            ax = plt.gca()
+            ax.set_yscale('log')
+            ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
+            ax.xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+            plt.ylabel('Frequency $[Hz]$',fontsize=14, style='italic')
+            plt.xlabel('Time $(s)$',fontsize=14, style='italic')
+            cbar = plt.colorbar()
+            cbar.set_label('PSD $[dB/Hz]$',fontsize=14, fontstyle='italic')
+            plt.xticks(fontsize=14)
+            plt.yticks(fontsize=14)
+            plt.tight_layout()
+            print(f'Saving spectrogram for data with iterating {i}-{j}')
+            print(40*'-')
+            plt.savefig(os.path.join(path, f'images/spectrogram/{folder_name}', filename + f'-{i}-s{j}-Spectrogram.png'), dpi=600)
+            plt.close()               
+           
+            k += 1    
+        
 def directivity_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,offset:int,ylim:list,chanels:list,polar_angles:list,path:str,filename:str,case:str,*targets:list):
     
     '''
