@@ -1,17 +1,42 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FormatStrFormatter
+import matplotlib.cm as cm
+from matplotlib.colors import Normalize
 import os
 from scipy.io import savemat
+from scipy.ndimage import gaussian_filter
 from scipy import stats
 import h5py
 import scipy.signal as sg
+from scipy.signal import windows
 import pdb
 import pywt
 # from rich import print as rprint
 
 def next_greater_power_of_2(x):
     return round(2**(x-1).bit_length())
+
+def h5_2_mat(pr_i:int,pr_n:int,jump:int,offset:int,chanels:list,path:str,filename:str):
+    
+    filename = filename.split('-')[0]
+    pr_used = np.arange(pr_i,pr_n+1,jump)
+    
+    for i in pr_used:
+    
+        k=offset
+        for j in chanels:
+            
+            data = h5py.File(os.path.join(path,filename + f'-{i}.h5'),'r')
+            time_data = data['Table1']['Ds001-Time'][:]
+            pressure_data = data['Table1'][f'Ds{k:03d}-Signal {j}'][:]
+        
+            dt=time_data[1]-time_data[0]
+            fs=1.0/dt
+            
+            data_mat = {'data': np.transpose(pressure_data), 'Fs':fs}
+            savemat(f'{filename}-{i}pr-s{j}.mat', data_mat)
+            print(f'Saved pressure signal for {i}% and signal {j}')
 
 def time_trace_generation(pr_i:int,pr_n:int,aoa:int,jump:int,chanels:list,path:str,filename:str):
     
@@ -44,7 +69,7 @@ def time_trace_generation(pr_i:int,pr_n:int,aoa:int,jump:int,chanels:list,path:s
     
     for i in pr_used:
         
-        k=124
+        k=91
         for j in chanels:
             
             data = h5py.File(os.path.join(path,filename + f'-{i}.h5'),'r')
@@ -68,7 +93,6 @@ def time_trace_generation(pr_i:int,pr_n:int,aoa:int,jump:int,chanels:list,path:s
             
             k += 1
             
-
 def psd_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,offset:int,y_lim:list,chanels:list,path:str,filename:str):
     
     plt.rcParams['agg.path.chunksize'] = 10000
@@ -104,11 +128,11 @@ def psd_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,offset:int,y_lim:l
             [f,Pxx]=sg.welch(pressure_data,fs=fs,window='hann',nperseg=nperseg_exp,nfft=nfft_exp,scaling='density')
                 
             # PSD plot
-            plt.plot(f,10*np.log10(Pxx/4.0e-10),'k--')
+            plt.plot(f,10*np.log10(Pxx/4.0e-10),'k')
             plt.grid(True, which='both', ls='--')
             plt.xlabel('Frequency $\\left[Hz\\right]$',fontsize=12, style='italic')
-            plt.ylabel('PSD $\\left[\\frac{dB}{Hz}\\right]$',fontsize=12, style='italic')
-            plt.xlim([70,20000])
+            plt.ylabel('PSD $\\left[dB/Hz\\right]$',fontsize=12, style='italic')
+            plt.xlim([70,5000])
             plt.ylim(y_lim)
             ax=plt.gca()
             ax.set_xscale('log')
@@ -119,10 +143,120 @@ def psd_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,offset:int,y_lim:l
             print(40*'-')
             plt.savefig(os.path.join(path, f'images/psd/{folder_name}', filename + f'-{i}-s{j}-PSD.png'), dpi=600)
             plt.close()
+            k += 1 
+
+def psd_comparison(pr_it:list,folder_name:str,jump:int,offset:int,y_lim:list,chanels:list,path:str,filename:str):
+    
+    plt.rcParams['agg.path.chunksize'] = 10000
+    
+    for k in chanels: 
+        os.makedirs(os.path.join(path, f'images/psd/{folder_name}'), exist_ok=True)
+    
+    filename = filename.split('-')[0]
+    pr_used = np.linspace(0,10,10)
+    norm = Normalize(vmin=0, vmax=len(pr_it)+3)
+    colormap = cm.Greys_r    
+  
+    z = 1
+    for i in pr_it:
+    
+        k=offset
+        for j in chanels:
             
-            k += 1
+            data = h5py.File(os.path.join(path,filename + f'-{i}.h5'),'r')
+            time_data = data['Table1']['Ds001-Time'][:]
+            pressure_data = data['Table1'][f'Ds{k:03d}-Signal {j}'][:]
+        
+            dt=time_data[1]-time_data[0]
+            fs=1.0/dt
+            
+            fmin = 10
+            n_chunk = 20
+            lensg_exp = pressure_data.size
+            nperseg_exp = lensg_exp/n_chunk
+            nfft_exp = next_greater_power_of_2(int(nperseg_exp))
+            noverlap_exp = nperseg_exp/2
+
+            if nperseg_exp > lensg_exp:
+                raise RuntimeError('Wrong value for $f_{min}$')
+
+            [f,Pxx]=sg.welch(pressure_data,fs=fs,window='hann',nperseg=nperseg_exp,nfft=nfft_exp,scaling='density')
+                
+            # PSD plot
+            plt.plot(f,10*np.log10(Pxx/4.0e-10),color=colormap(norm(z)))
+            k += 1     
+            z += 1
+    plt.grid(True, which='both', ls='--')
+    plt.xlabel('Frequency $\\left[Hz\\right]$',fontsize=12, style='italic')
+    #plt.legend(['$8 m/s$', '$10 m/s$', '$12 m/s$', '$14 m/s$', '16 m/s', '18 m/s'])
+    plt.ylabel('PSD $\\left[dB/Hz\\right]$',fontsize=12, style='italic')
+    plt.xlim([70,5000])
+    plt.ylim(y_lim)
+    ax=plt.gca()
+    ax.set_xscale('log')
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    plt.tight_layout()
+    print(f'Saving PSD for percetage {i} and signal {j} \n')
+    print(40*'-')
+    plt.savefig(os.path.join(path, f'images/psd/{folder_name}', filename + f'-{i}-s{j}-PSD.png'), dpi=600)
+    plt.close()
+            
+    return(f,Pxx)       
 
 def wavelet_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,offset:int,y_lim:list,chanels:list,path:str,filename:str):
+    
+    plt.rcParams['agg.path.chunksize'] = 10000
+    
+    for k in chanels: 
+        os.makedirs(os.path.join(path, f'images/wavelet/{folder_name}'), exist_ok=True)
+    
+    filename = filename.split('-')[0]
+    pr_used = np.arange(pr_i,pr_n+1,jump)
+    pr_used = [22,35,50]
+    for i in pr_used:
+    
+        k=offset
+        for j in chanels:
+            
+            data = h5py.File(os.path.join(path,filename + f'-{i}.h5'),'r')
+            time_data = data['Table1']['Ds001-Time'][:]
+            pressure_data = data['Table1'][f'Ds{k:03d}-Signal {j}'][:]
+ 
+            dt = time_data[1] - time_data[0]
+            fs = 1.0 / dt
+
+            wavelet = 'cmor5.0-2.0'
+            fc = pywt.central_frequency(wavelet)
+
+            f_min, f_max = 100, 1500
+            num_freqs = 200
+            frequencies = np.linspace(f_min, f_max, num_freqs)
+            scales = fc / (frequencies * dt)
+
+            coefficients, _ = pywt.cwt(pressure_data,scales,wavelet,sampling_period=dt)
+
+            power = np.abs(coefficients)**2
+            power /= np.max(power, axis=1, keepdims=True)
+            log_power = 10 * np.log10(power + 1e-12)
+
+            plt.imshow(log_power,aspect='auto',extent=[time_data[0], time_data[-1], frequencies[0], frequencies[-1]],origin='lower',cmap='hot_r',vmin=-20,vmax=0)
+
+            plt.colorbar(label='Normalized $|W|^2$')
+            plt.xlabel('Time [s]',fontsize=14, style='italic')
+            plt.xlim([0,0.1])
+            plt.ylabel('Frequency [Hz]',fontsize=14, style='italic')
+            plt.ylim([100,1500])
+            plt.yscale('log')
+            plt.xticks(fontsize=14)
+            plt.yticks(fontsize=14)
+            plt.tight_layout()
+            print(f'Saving spectrogram for data with iterating {i}-{j}')
+            print(40*'-')
+            plt.savefig(os.path.join(path, f'images/wavelet/{folder_name}', filename + f'-{i}-s{j}-Wavelet.png'), dpi=600)
+            plt.close()
+
+def wavelet_generation_2(pr_i:int,pr_n:int,folder_name:str,jump:int,offset:int,y_lim:list,chanels:list,path:str,filename:str):
     
     plt.rcParams['agg.path.chunksize'] = 10000
     
@@ -144,7 +278,7 @@ def wavelet_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,offset:int,y_l
             dt=time_data[1]-time_data[0]
             fs=1.0/dt
 
-            n_scales = 300
+            n_scales = 600
             scales = np.arange(1, n_scales)
             coeffs, freqs = pywt.cwt(pressure_data, scales, 'cmor', sampling_period=dt) 
             
@@ -152,7 +286,7 @@ def wavelet_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,offset:int,y_l
             power_norm = power / np.var(pressure_data)
             extent = [time_data.min(), time_data.max(), freqs.min(), freqs.max()]
 
-            plt.imshow(10*np.log10(power_norm + 1e-20), extent=extent, cmap='hot_r', aspect='auto', origin='lower',vmin=-25,vmax=0.1)
+            plt.imshow(10*np.log10(power_norm + 1e-20), extent=extent, cmap='hot_r', aspect='auto', origin='lower')#,vmin=-25,vmax=0.1)
             plt.colorbar(label='Normalized $|W|^2$')
             plt.xlabel('Time [s]',fontsize=14, style='italic')
             plt.ylabel('Frequency [Hz]',fontsize=14, style='italic')
@@ -178,7 +312,6 @@ def spectrogram_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,offset:int
     
     filename = filename.split('-')[0]
     pr_used = np.arange(pr_i,pr_n+1,jump)
-    
     for i in pr_used:
     
         k=offset
@@ -191,10 +324,13 @@ def spectrogram_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,offset:int
             dt=time_data[1]-time_data[0]
             fs=1.0/dt
             
-            fmin = 10
-            n_chunk = 4
+            fmin = 5
+            n_chunk = 20
             lensg_exp = pressure_data.size
             nperseg_exp = lensg_exp/n_chunk
+            nperseg_exp = int(1/(fmin/5*dt))
+            df_target = 2
+            nfft_exp = int(fs / df_target)  
             nfft_exp = next_greater_power_of_2(int(nperseg_exp))
             noverlap_exp = nperseg_exp/2
 
@@ -204,12 +340,13 @@ def spectrogram_generation(pr_i:int,pr_n:int,folder_name:str,jump:int,offset:int
             f, t, pxx = sg.spectrogram(pressure_data,fs=fs,window='hann',nperseg=int(nperseg_exp),nfft=nfft_exp,scaling='density')
 
             cmap = plt.get_cmap('hot_r')
-            fig = plt.pcolormesh(t, f, 10*np.log10(pxx/4.0e-10), shading='gouraud',cmap=cmap,vmin=-10,vmax=30)
-            plt.ylim([100,15000])
+            fig = plt.pcolormesh(t, f, 10*np.log10(pxx/4.0e-10), shading='gouraud',cmap=cmap,vmin=22,vmax=42)
+
+            plt.ylim([100,5000])
             ax = plt.gca()
             ax.set_yscale('log')
             ax.yaxis.set_major_formatter(FormatStrFormatter('%1.0f'))
-            ax.xaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+            ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
             plt.ylabel('Frequency $[Hz]$',fontsize=14, style='italic')
             plt.xlabel('Time $(s)$',fontsize=14, style='italic')
             cbar = plt.colorbar()

@@ -1,6 +1,6 @@
 from functions import *
 
-path = '/run/media/renj3003/BckSmoreau6/CD-ISAE-Beamforming/Acoustics/Export'
+path = '/scratch/renj3003/cd-airfoil/data'
 path_cp = '/Users/jmrendona/Library/CloudStorage/OneDrive-USherbrooke/PhD/Others/Mine/2025-ISAE-Exp/NACA0015/Cp/Exp-NACA0015-2'
 filename = 'hover_AD30_200-1.h5'
 # filename_cp = ['NACA0015_6deg_SVA_sweep2-1.csv','NACA0015_6deg_SVB_sweep2-1.csv',15,14]
@@ -12,16 +12,19 @@ naca12_coord = np.array([0.009230769,	0.025384615,	0.043076923,	0.061538462,	0.0
                          0.192307692,	0.230769231,	0.269230769,	0.307692308,	0.346153846, 0.423076923, 0.5, 0.576923077,
                          0, 0.061538462, 0.807692308, 0.884615385, 0.95, 1, 0.95, 0.8, 0.65, 0.5, 0.35, 0.025, 0.19, 0.12, 0.06, 0.025])
 polar_angles = np.arange(0, 184, 3)  # Polar angles from 0 to 180 degrees in steps of 5])
-chanels = [ 123]
-pr_i = 14
-pr_n = 58
+chanels = [90]
+pr_i = 26
+pr_n = 28
 folder_name = 'CD-0deg'
-ylim = [-20, 45]
+ylim = [-10, 50]
 ylim_2 = [20, 70]
+pr_it = [25,26,27,28,29,30]
 
-#psd_generation(pr_i, pr_n, folder_name, 1, 123, ylim, chanels, path, 'CD_ISAE_0deg-14.h5')
-#spectrogram_generation(19, 24, folder_name, 1, 124, ylim, chanels, path, 'CD_ISAE_0deg-14.h5')
-wavelet_generation(19, 24, folder_name, 1, 124, ylim, chanels, path, 'CD_ISAE_0deg-14.h5')
+#h5_2_mat(pr_i, pr_n, 1, 91, chanels, path, 'CD_ISAE_5deg-14.h5')
+#psd_generation(pr_i, pr_n, folder_name, 1, 91, ylim, chanels, path, 'CD_ISAE_5deg-14.h5')
+psd_comparison(pr_it, folder_name, 1, 91, ylim, chanels, path, 'CD_ISAE_5deg-14.h5')
+#spectrogram_generation(pr_i, pr_n, folder_name, 1, 91, ylim, chanels, path, 'CD_ISAE_5deg-14.h5')
+#wavelet_generation(pr_i, pr_n, folder_name, 1, 121, ylim, chanels, path, 'CD_ISAE_0deg-14.h5')
 # psd_generation(pr_i, 3, 'AD30_250', 1, ylim, chanels, path, 'hover_AD30_250-1.h5')
 # psd_generation(pr_i, 3, 'AD30_250', 1, ylim, chanels, path, 'hover_AD30_250-1.h5')
 # psd_generation(pr_i, 3, 'ADS01', 1, ylim, chanels, path, 'hover_ADS01-1.h5')
